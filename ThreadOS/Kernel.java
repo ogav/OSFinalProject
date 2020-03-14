@@ -155,7 +155,12 @@ public class Kernel
                         System.out.println( "threaOS: caused read errors" );
                         return ERROR;
                   }
-                  // return FileSystem.read( param, byte args[] );
+                  if ((myTcb = scheduler.getMyTcb()) != null) {
+                     FileTableEntry ftEnt = myTcb.getFtEnt(param);
+                     if (ftEnt != null) {
+                        return fs.read(ftEnt, (byte[]) args);
+                     }
+                  }
                   return ERROR;
                case WRITE:
                   switch ( param ) {
