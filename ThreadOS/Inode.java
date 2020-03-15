@@ -63,7 +63,7 @@ public class Inode {
     }
 
     // Return found value on success and -1 upon failure
-    short getIndexBlockNumber(int seekPointer) {
+/*    short getIndexBlockNumber(int seekPointer) {
         int offset = seekPointer / Disk.blockSize;
 
         if (offset < directSize) {
@@ -74,12 +74,12 @@ public class Inode {
             return 1;
         }
         return -1;
-    }
+    }*/
 
-    boolean setIndexBlock(short indexBlockNumber) {
+/*    boolean setIndexBlock(short indexBlockNumber) {
         //System.out.println("IN SETINDEXBLOCK METHOD");
         return true;
-    }
+    }*/
 
     int findTargetBlock(int offset) {
         int targetBlock = offset / Disk.blockSize;
@@ -101,10 +101,58 @@ public class Inode {
         }
     }
 
-    int registerTargetBlock(int i, short j) {
-        return 0;
+    // or set index block
+    boolean registerIndexBlock(short blck) {
+        if (indirect != -1)
+            return false;
+        for (int i = 0; i < directSize; i++) {
+            if (direct[i] == -1)
+                return false;
+        }
+
+        indirect = blck;
+        byte[] block = new byte[Disk.blockSize];
+
+        for (int i = 0; i < (Disk.blockSize /2); ++i) {
+            SysLib.short2bytes((short)-1, block, i * 2);
+        }
+        SysLib.rawwrite(blck, block);
+        return true;
     }
 
+    // or update a block
+    int registerTargetBlock(int position, short value) {
+        int index = position / Disk.blockSize;
+
+        if (indirect < 0) {
+            return -3;
+        } else if (index < 11) {    // loacted in direct reference array
+            if (direct[index] >= 0)
+                return -1;
+            else if (index > 0 && direct[index - 1] == -1)
+                return -2;
+            else {
+                direct[index] = value;
+                return 0;
+            }
+        } else {                    // indirect locations
+            byte[] block = new byte[Disk.blockSize];
+            SysLib.rawread(indirect, block);
+
+            int blckSize = index - 11;
+            short i = SysLib.bytes2short(block, (blckSize * 2));
+
+            if (i > 0)
+                return -1;
+            else {
+                SysLib.short2bytes(value, block, blckSize * 2);
+                SysLib.rawwrite(indirect, block);
+                return 0;
+            }
+        }
+    }
+
+    // or free indirect block
     byte[] unregisterIndexBlock() {
         if (indirect > 0) {
             indirect = -1;
