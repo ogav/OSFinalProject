@@ -3,13 +3,13 @@ A: The disk consists of 1000 block and the block#0 is the superblock.
 The disk consists of 1000 blocks and you can consider those blocks are numbered from 0 to 999. Use the block #0 as the
 superblock. For accessing this block, you should call SysLib.rawread( 0, data ) where data is a 512-byte array.
  */
-import java.lang.*;
 
-class SuperBlock {
-    private final int defaultINodeBlocks = 64;
+public class SuperBlock {
+    private final int defaultInodeBlocks = 64;
     public int totalBlocks; // the number of disk blocks
     public int totalInodes; // the number of inodes
     public int freeList;    // the block number of the free list's head
+    public int inodeBlocks;
 
     // Taken from the 'CSS430FinalProject.pdf" file provided in Program 5 assignment description
     public SuperBlock(int diskSize) {
@@ -18,18 +18,21 @@ class SuperBlock {
         totalBlocks = SysLib.bytes2int(superBlock, 0);
         totalInodes = SysLib.bytes2int(superBlock, 4);
         freeList = SysLib.bytes2int(superBlock, 8);
+        inodeBlocks = totalInodes;
 
         if (totalBlocks == diskSize && totalInodes > 0 && freeList >= 2)
             return;     // disk contents are valid
         else {
             // need to format disk
             totalBlocks = diskSize;
-            format(defaultINodeBlocks);
+            format(defaultInodeBlocks);
         }
     }
 
     public void format(int numBlocks) {
         totalInodes = numBlocks;
+        totalBlocks = 1000;
+        freeList = (numBlocks / 16) + 2;
 
         for (short i = 0; i < totalInodes; i++) {
             Inode n = new Inode();
@@ -45,11 +48,10 @@ class SuperBlock {
                 SysLib.rawwrite(i, block);
             } else {
                 SysLib.rawread(i, block);
-                SysLib.int2bytes(i, block, 0);
+                SysLib.int2bytes(i + 1, block, 0);
                 SysLib.rawwrite(i, block);
             }
         }
-
         sync();
     }
 
@@ -68,51 +70,55 @@ class SuperBlock {
         if (freeList > 0 && freeList < totalBlocks) {
             int freeBlockValue = freeList;
             byte[] block = new byte[Disk.blockSize];
-            SysLib.rawread(freeList, block);
+            SysLib.rawread(freeBlockValue, block);
 
             // update freeList
+            int retVal = freeList;
             freeList = SysLib.bytes2int(block, 0);
 
             SysLib.int2bytes(0, block, 0);
             SysLib.rawwrite(freeBlockValue, block);
-            return freeList;
+            return retVal;
         }
         // free list value not valid, return err value
-        return freeList;
+        return -1;
     }
 
     // Enqueue a given block to the end of the free list
-    public void returnBlock(int blockNum) {
+    public boolean returnBlock(int blockNum) {
         if (blockNum > 0 && blockNum < totalBlocks) {
             byte[] block = new byte[Disk.blockSize];
 
-            SysLib.int2bytes(blockNum, block, 0);
+            SysLib.int2bytes(freeList, block, 0);
             SysLib.rawwrite(blockNum, block);
 
-
+            freeList = blockNum; 
+/*
             if (freeList < 0) {     // nothing in the freelist, add to the begininng
                 freeList = blockNum;
                 SysLib.rawwrite(blockNum, block);
-            } else {                // freelist has multiple values in it, find the end of the list to append free block
-                int nextFreeBlock = freeList;
-                int previous = freeList;
-                byte[] nextFreeBlockVal = new byte[Disk.blockSize];
-                byte[] newBlockToAdd = new byte[Disk.blockSize];
+            } else {                // freelist has multiple values in it, find the end of the list to append free block*/
+/*            int nextFreeBlock = freeList;
+            int previous = freeList;
+            byte[] nextFreeBlockVal = new byte[Disk.blockSize];
+            byte[] newBlockToAdd = new byte[Disk.blockSize];
 
-                SysLib.int2bytes(-1, newBlockToAdd, 0);
+            SysLib.int2bytes(-1, newBlockToAdd, 0);
 
-                while (nextFreeBlock != -1) {
-                    SysLib.rawread(nextFreeBlock, nextFreeBlockVal);
-                    previous = SysLib.bytes2int(nextFreeBlockVal, 0);
-                    // maybe concatenate these two lines
-                    nextFreeBlock = previous;
-                }
-
-                SysLib.int2bytes(blockNum, nextFreeBlockVal, 0);
-                SysLib.rawwrite(nextFreeBlock, nextFreeBlockVal);
-                SysLib.rawwrite(blockNum, newBlockToAdd);
-
+            while (nextFreeBlock != -1) {
+                SysLib.rawread(nextFreeBlock, nextFreeBlockVal);
+                previous = SysLib.bytes2int(nextFreeBlockVal, 0);
+                // maybe concatenate these two lines
+                nextFreeBlock = previous;
             }
+
+            SysLib.int2bytes(blockNum, nextFreeBlockVal, 0);
+            SysLib.rawwrite(nextFreeBlock, nextFreeBlockVal);
+            SysLib.rawwrite(blockNum, newBlockToAdd);*/
+
+            //}
+            return  true;
         }
+        return  false;
     }
 }
