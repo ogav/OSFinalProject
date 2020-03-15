@@ -80,8 +80,7 @@ public class SuperBlock {
             SysLib.rawwrite(freeBlockValue, block);
             return retVal;
         }
-        // free list value not valid, return err value
-        return -1;
+        return freeList;
     }
 
     // Enqueue a given block to the end of the free list
