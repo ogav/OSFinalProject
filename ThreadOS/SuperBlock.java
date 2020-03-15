@@ -33,6 +33,7 @@ class SuperBlock {
 
         for (short i = 0; i < totalInodes; i++) {
             Inode n = new Inode();
+            n.flag = 0;
             n.toDisk(i);
         }
 
