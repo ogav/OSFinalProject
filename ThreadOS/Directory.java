@@ -1,8 +1,5 @@
 public class Directory {
-    // Return values
-    public final static int OK = 0;
     public final static short ERROR = -1;
-
     private static int maxChars = 30; // max characters of each file name
  
     // Directory entries
@@ -28,7 +25,7 @@ public class Directory {
            offset += 4; // int is 4 bytes
        }
        for (int i = 0; i < fnames.length; i ++) {
-           String fname = new String(data, offset, maxChars * 2); // construct a new String by decoding data using the platform's default charset
+           String fname = new String(data, offset, maxChars * 2); // construct a new String by decoding data[] using the platform's default charset
            fname.getChars(0, fsizes[i], fnames[i], 0);
            offset += (maxChars * 2); // char is 2 bytes
        }
@@ -59,7 +56,7 @@ public class Directory {
        // allocates a new inode number for this filename
        for (int i = 0; i < fsizes.length; i ++) {
            if (fsizes[i] == 0) {
-            fsizes[i] = (filename.length > 30) ? maxChars : filename.length();
+            fsizes[i] = (filename.length() > 30) ? maxChars : filename.length();
             filename.getChars(0, fsizes[i], fnames[i], 0);
             return (short) i;
            }
@@ -70,9 +67,24 @@ public class Directory {
     public boolean ifree( short iNumber ) {
        // deallocates this inumber (inode number)
        // the corresponding file will be deleted.
+       if (iNumber >= 0 && fsizes[iNumber] > 0) {
+           fsizes[iNumber] = 0;
+           return true;
+       }
+       return false;
     }
  
     public short namei( String filename ) {
        // returns the inumber corresponding to this filename
+       for (int i = 0; i < fsizes.length; i ++) {
+           if (filename.length() == fsizes[i]) {
+               String fname = new String (fnames[i], 0, fsizes[i]);
+                if (filename.equals(fname)) {
+                    return (short) i;
+                }
+           }
+
+       }
+       return ERROR;
     }
  }
