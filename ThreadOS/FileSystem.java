@@ -21,7 +21,7 @@ public class FileSystem {
         close(dirEnt);
     }
 
-    void read(FileTableEntry entry, byte[] data) {
+    int read(FileTableEntry entry, byte[] data) {
         if (entry != null && !entry.mode.equals("w") && !entry.mode.equals("a")) {
             synchronized (entry) {
                 int fsize = fsize(entry);
@@ -54,12 +54,17 @@ public class FileSystem {
                         bufleft -= toRead;
                     }
                 }
+                return read;
             }
         }
+        return -1;
     }
 
     FileTableEntry open(String name, String mode) {
-        return null;
+        FileTableEntry e = fileTable.falloc(name, mode);
+        if (mode == "w" && !deallocAllBlocks(e))
+            return null;
+        return e;
     }
 
     synchronized int fsize(FileTableEntry entry) {
@@ -71,8 +76,21 @@ public class FileSystem {
         return 0;
     }
 
-    void close(FileTableEntry entry) {
+    int seek(FileTableEntry e, int offset, int whence) {
+        return 0;
+    }
 
+    boolean close(FileTableEntry entry) {
+        synchronized (entry) {
+            entry.count = entry.count - 1;
+            if (entry.count == 0)
+                return fileTable.ffree(entry);
+            return true;
+        }
+    }
+
+    int write(FileTableEntry e, byte[] data) {
+        return 0;
     }
 
     boolean format(int numFiles) {
@@ -80,6 +98,18 @@ public class FileSystem {
         directory = new Directory(superBlock.inodeBlocks);
         fileTable = new FileTable(directory);
         return true;
+    }
+
+    boolean deallocAllBlocks(FileTableEntry e) {
+        return true;
+    }
+
+    boolean delete(String fileName) {
+        FileTableEntry e = open(fileName, "w");
+        boolean i = directory.ifree(e.iNumber);
+        boolean j = close(e);
+
+        return i && j;
     }
 
 }
