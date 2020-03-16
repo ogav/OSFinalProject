@@ -2,103 +2,115 @@
 import java.util.Vector;
 
 public class FileTable {
-  private Vector table = new Vector();
-  private Directory dir;
 
-  public FileTable(Directory var1) {
-    this.dir = var1;
-  }
+    private Vector table;         // the actual entity of this file table
+    private Directory dir;        // the root directory 
+ 
+    public FileTable( Directory directory ) { // constructor
+       table = new Vector( );     // instantiate a file (structure) table
+       dir = directory;           // receive a reference to the Director
+    }                             // from the file system  
 
-  public synchronized FileTableEntry falloc(String var1, String var2) {
-    Inode var4 = null;
+    // major public methods
+    public synchronized FileTableEntry falloc(String filename, String mode) {
+        // allocate a new file (structure) table entry for this file name
+        // allocate/retrieve and register the corresponding inode using dir
+        // increment this inode's count
+        // immediately write back this inode to the disk
+        // return a reference to this file (structure) table entry
+        Inode inode = null;
 
-    short var3;
-    while(true) {
-      if (var1.equals("/")) {
-        var3 = 0;
-      } else {
-        var3 = this.dir.namei(var1);
-      }
+        short inumber;
+        while(true) {
+        if (filename.equals("/")) {
+            inumber = 0;
+        } else {
+            inumber = dir.namei(filename);
+        }
 
-      if (var3 >= 0) {
-        var4 = new Inode(var3);
-        if (var2.compareTo("r") == 0) {
-          if (var4.flag != 0 && var4.flag != 1) {
+        if (inumber >= 0) {
+            inode = new Inode(inumber);
+            if (mode.compareTo("r") == 0) {
+            if (inode.flag != 0 && inode.flag != 1) {
+                try {
+                wait();
+                } catch (InterruptedException e) {
+                }
+                continue;
+            }
+
+            inode.flag = 1;
+            break;
+            }
+
+            if (inode.flag != 0 && inode.flag != 3) {
+            if (inode.flag == 1 || inode.flag == 2) {
+                inode.flag = (short)(inode.flag + 3);
+                inode.toDisk(inumber);
+            }
+
             try {
-              this.wait();
-            } catch (InterruptedException var7) {
+                wait();
+            } catch (InterruptedException e) {
             }
             continue;
-          }
+            }
 
-          var4.flag = 1;
-          break;
+            inode.flag = 2;
+            break;
         }
 
-        if (var4.flag != 0 && var4.flag != 3) {
-          if (var4.flag == 1 || var4.flag == 2) {
-            var4.flag = (short)(var4.flag + 3);
-            var4.toDisk(var3);
-          }
-
-          try {
-            this.wait();
-          } catch (InterruptedException var6) {
-          }
-          continue;
+        if (mode.compareTo("r") == 0) {
+            return null;
         }
 
-        var4.flag = 2;
+        inumber = dir.ialloc(filename);
+        inode = new Inode();
+        inode.flag = 2;
         break;
-      }
+        }
 
-      if (var2.compareTo("r") == 0) {
-        return null;
-      }
+        ++inode.count;
+        inode.toDisk(inumber);
+        FileTableEntry ftEnt = new FileTableEntry(inode, inumber, mode);
+        table.addElement(ftEnt);
+        return ftEnt;
+  }
 
-      var3 = this.dir.ialloc(var1);
-      var4 = new Inode();
-      var4.flag = 2;
-      break;
+    public synchronized boolean ffree(FileTableEntry e) {
+        // receive a file table entry reference
+        // save the corresponding inode to the disk
+        // free this file table entry.
+        // return true if this file table entry found in my table
+        if (table.removeElement(e)) {
+            --e.inode.count;
+            switch(e.inode.flag) {
+            case 1:
+                e.inode.flag = 0;
+                break;
+            case 2:
+                e.inode.flag = 0;
+            case 3:
+            default:
+                break;
+            case 4:
+                e.inode.flag = 3;
+                break;
+            case 5:
+                e.inode.flag = 3;
+            }
+
+            e.inode.toDisk(e.iNumber);
+            e = null;
+            notify();
+            return true;
+        } else {
+        return false;
+        }
     }
 
-    ++var4.count;
-    var4.toDisk(var3);
-    FileTableEntry var5 = new FileTableEntry(var4, var3, var2);
-    this.table.addElement(var5);
-    return var5;
-  }
-
-  public synchronized boolean ffree(FileTableEntry var1) {
-    if (this.table.removeElement(var1)) {
-      --var1.inode.count;
-      switch(var1.inode.flag) {
-        case 1:
-          var1.inode.flag = 0;
-          break;
-        case 2:
-          var1.inode.flag = 0;
-        case 3:
-        default:
-          break;
-        case 4:
-          var1.inode.flag = 3;
-          break;
-        case 5:
-          var1.inode.flag = 3;
-      }
-
-      var1.inode.toDisk(var1.iNumber);
-      var1 = null;
-      this.notify();
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  public synchronized boolean fempty() {
-    return this.table.isEmpty();
-  }
+    public synchronized boolean fempty() {
+        return table.isEmpty();  // return if table is empty 
+    }                            // should be called before starting a format
 }
 
