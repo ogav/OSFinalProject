@@ -5,7 +5,7 @@ public class FileSystem {
 
     public FileSystem(int diskBlocks) {
         superBlock = new SuperBlock(diskBlocks);
-        directory = new Directory(superBlock.totalInodes);
+        directory = new Directory(superBlock.inodeBlocks);
         fileTable = new FileTable(directory);
 
         // read the '/' from disk
@@ -35,4 +35,12 @@ public class FileSystem {
     void close(FileTableEntry entry) {
 
     }
+
+    boolean format(int numFiles) {
+        superBlock.format(numFiles);
+        directory = new Directory(superBlock.inodeBlocks);
+        fileTable = new FileTable(directory);
+        return true;
+    }
+
 }
