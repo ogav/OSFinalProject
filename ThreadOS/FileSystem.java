@@ -76,8 +76,30 @@ public class FileSystem {
         return 0;
     }
 
+    // update seek pointer
     int seek(FileTableEntry e, int offset, int whence) {
-        return 0;
+        if (e == null)
+            return -1;
+        synchronized (e) {
+            if (whence == 0) {
+                // file's seek pointer is set to offset bytes from the beginning of the file
+                e.seekPtr = offset;
+            } else if (whence == 1) {
+                // the file's seek pointer is set to its current value plus the offset
+                e.seekPtr += offset;
+            } else if (whence == 2) {
+                // the file's seek pointer is set to the size of the file plus the offset
+                e.seekPtr = fsize(e) + offset;
+            }
+            // If the user attempts to set the seek pointer to a negative number you must clamp it to zero.
+            if (e.seekPtr > fsize(e))
+                e.seekPtr = fsize(e);
+            // user attempts to set the pointer to beyond the file size, you must set the seek pointer to end of file
+            if (e.seekPtr < 0)
+                e.seekPtr = 0;
+
+            return e.seekPtr;
+        }
     }
 
     boolean close(FileTableEntry entry) {
