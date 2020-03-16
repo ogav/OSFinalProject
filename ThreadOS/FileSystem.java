@@ -10,6 +10,7 @@ public class FileSystem {
 
         // read the '/' from disk
         FileTableEntry dirEnt = open("/", "r");
+
         int dirSize = fsize(dirEnt);
         if (dirSize > 0) {
             // directory has some data
@@ -28,7 +29,12 @@ public class FileSystem {
         return null;
     }
 
-    int fsize(FileTableEntry entry) {
+    synchronized int fsize(FileTableEntry entry) {
+        if (entry != null) {            // delete this later
+            synchronized (entry) {
+                return entry.inode.length;
+            }
+        }
         return 0;
     }
 
