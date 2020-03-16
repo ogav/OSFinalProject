@@ -62,8 +62,10 @@ public class FileSystem {
 
     FileTableEntry open(String name, String mode) {
         FileTableEntry e = fileTable.falloc(name, mode);
-        if (mode == "w" && !deallocAllBlocks(e))
+        boolean i = deallocAllBlocks(e);
+        if (mode == "w" && !i) {
             return null;
+        }
         return e;
     }
 
@@ -111,18 +113,10 @@ public class FileSystem {
         }
     }
 
-    int write(FileTableEntry e, byte[] data) {
-        return 0;
-    }
-
     boolean format(int numFiles) {
         superBlock.format(numFiles);
         directory = new Directory(superBlock.inodeBlocks);
         fileTable = new FileTable(directory);
-        return true;
-    }
-
-    boolean deallocAllBlocks(FileTableEntry e) {
         return true;
     }
 
@@ -132,6 +126,14 @@ public class FileSystem {
         boolean j = close(e);
 
         return i && j;
+    }
+
+    boolean deallocAllBlocks(FileTableEntry e) {
+        return true;
+    }
+
+    int write(FileTableEntry e, byte[] data) {
+        return 0;
     }
 
 }
